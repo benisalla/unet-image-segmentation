@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "unet-image-segmentation"
+version = "0.1.0"
+description = "U-Net image segmentation in PyTorch with every architectural switch made explicit (skip connections, max-pool vs strided, double conv, residual blocks, SegNet and FCN variants), compared on synthetic shapes and Oxford-IIIT Pet with IoU/Dice evaluation."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Ismail Ben Alla" }]
+requires-python = ">=3.10"
+keywords = ["image-segmentation", "unet", "semantic-segmentation", "pytorch", "segnet", "fcn", "oxford-pets"]
+dependencies = [
+  "numpy>=1.24",
+  "pillow>=10",
+  "matplotlib>=3.7",
+  "torch>=2.2",
+  "torchvision>=0.17",
+]
+
+[project.optional-dependencies]
+albumentations = ["albumentations>=1.4"]
+dev = ["pytest>=8", "ruff>=0.9", "nbformat>=5.10"]
+
+[project.scripts]
+unetseg-data = "unetseg.datasets:main"
+unetseg-train = "unetseg.train:main"
+unetseg-eval = "unetseg.evaluate:main"
+unetseg-predict = "unetseg.predict:main"
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/unetseg"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["notebooks/*.ipynb", "legacy/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
