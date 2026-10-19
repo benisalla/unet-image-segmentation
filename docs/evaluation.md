@@ -79,7 +79,8 @@ Reading it against the coursework's four questions:
    The strided model did not collapse here (BN + ReLU after the strided conv, warm-up),
    but it learns more slowly and misses whole small objects (first row of the comparison
    figure). Same conclusion as the coursework, smaller gap.
-2. **Skip connections:** `unet` 0.560 vs `segnet` 0.489. Without skips the masks are
+2. **Skip connections:** `unet` 0.560 vs `segnet` 0.489 (within single-run noise, see
+   [Before / after figures](#before--after-figures), but visible in the pictures). Without skips the masks are
    rounded blobs and small triangles are lost or smeared (figure, column `segnet`).
    Same conclusion as the coursework.
 3. **Encoder-decoder vs fully connected:** 0.56 vs 0.10, with 10x the parameters. The
@@ -105,13 +106,43 @@ Same settings, images resized to 96 px, the first 600 training photos, pet = 43%
 pixels. The two models were chosen before the shapes results were in (the plain U-Net
 baseline and the residual variant); `unet-single` would be the next one to try.
 
-| model | params | test IoU | test Dice | pixel acc | precision | recall | best val thr. | test IoU at it | val IoU per epoch | time |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `unet-residual` | 2.03 M | **0.679** | **0.809** | 0.829 | 0.767 | 0.855 | 0.45 | 0.676 | .57 .60 .65 .67 .68 .68 | 8.1 min |
-| `unet` | 1.94 M | 0.641 | 0.781 | 0.800 | 0.727 | 0.844 | 0.50 | 0.641 | .55 .60 .60 .63 .63 .65 | 6.6 min |
+| model | params | test IoU | test Dice | pixel acc | precision | recall | best val thr. | test IoU at it | time |
+|---|---|---|---|---|---|---|---|---|---|
+| `unet-residual` | 2.03 M | **0.679** | **0.809** | 0.829 | 0.767 | 0.855 | 0.45 | 0.676 | 8.1 min |
+| `unet` | 1.94 M | 0.641 | 0.781 | 0.800 | 0.727 | 0.844 | 0.50 | 0.641 | 6.6 min |
+| `segnet` | 1.75 M | 0.630 | 0.773 | 0.800 | 0.744 | 0.803 | 0.45 | 0.630 | 3.8 min |
+| `fcn` | 19.21 M | 0.524 | 0.688 | 0.729 | 0.671 | 0.705 | 0.35 | 0.525 | 1.2 min |
 
-Recall is high and precision lower for both: with 600 photos and 6 epochs the models
-find the animal but also paint background regions with similar colours (doors, furniture
-in the comparison figure). Here pixel accuracy (0.80) is far from IoU for the opposite
-reason to the shapes: the object is large, so false positives are expensive in IoU.
+(`segnet` and `fcn` were added later with the same command and `--models segnet fcn`.)
+
+Recall is high and precision lower for the U-Nets. With 600 photos and 6 epochs the
+models find the animal but also paint background regions of similar colour (doors and
+furniture in the comparison figure). Pixel accuracy (0.80) is far from IoU here for the
+opposite reason to the shapes: the object is large, so false positives cost a lot of IoU.
+
+The order is the same as on the shapes, but the gaps are different:
+
+- **Skip connections:** worth only +0.01. A pet is one large blob, and at 96 px few
+  pixels sit on its outline.
+- **The fully connected model:** reaches 0.52, because the average Pets mask (a centred
+  blob) is already a decent guess. `assets/unet_segnet_fcn_pets.png` shows it predicting
+  that blob whatever the animal's pose.
+
 These numbers are what a CPU allows; the notebook trains on all 7 390 photos at 160 px.
+
+## Before / after figures
+
+`scripts/before_after.py train` re-trains `unet` with the `on_model` hook of `train()`. The
+hook records the predicted probabilities for 4 fixed test images before training
+(epoch 0) and after every epoch, into `runs/progress/<name>/progress.npz`.
+`scripts/before_after.py plot` turns those into:
+
+- `assets/before_after_*.png`: epoch 0, the middle epoch and the last epoch;
+- `assets/progress_*.gif`: one frame per epoch, with the mean IoU in the caption,
+  about 0.3-0.5 MB each;
+- `assets/unet_segnet_fcn_*.png`: the same images through the saved best checkpoints.
+
+The shapes re-run (1 thread) ended at test IoU 0.467, and the original run in the table
+(2 threads) at 0.560. Floating-point summation order differs with the thread count, and
+in a 6-epoch run that is enough to move IoU by 0.09. The Pets re-run reproduced 0.641
+exactly. Read differences smaller than about 0.1 between the shapes rows as noise.

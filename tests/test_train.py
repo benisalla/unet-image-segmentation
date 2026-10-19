@@ -63,3 +63,11 @@ def test_cli_switches_override_the_preset():
     a = build_parser().parse_args(["--model", "unet", "--no-skip", "--down", "strided", "--residual"])
     cfg = ModelConfig.from_preset(a.model, skip=a.skip, down=a.down, double=a.double, residual=a.residual)
     assert (cfg.skip, cfg.down, cfg.double, cfg.residual) == (False, "strided", True, True)
+
+
+def test_on_model_sees_the_untrained_model_and_every_epoch(shapes_dir, tmp_path):
+    seen = []
+    tcfg = TrainConfig(data_dir=str(shapes_dir), out_dir=str(tmp_path / "hook"), img_size=32, epochs=2, batch_size=8)
+    train(ModelConfig.from_preset("unet", base=4, depth=2), tcfg, evaluate_test=False, verbose=False,
+          on_model=lambda epoch, model: seen.append((epoch, model.training)))
+    assert [e for e, _ in seen] == [0, 1, 2]

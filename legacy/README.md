@@ -36,4 +36,4 @@ verbatim for reference. The maintained code is the package in [`src/unetseg`](..
 | update ratio = `‖lr · grad‖ / ‖W‖`, computed before clipping | that is not the step AdamW takes | measured as `‖W_after − W_before‖ / ‖W_before‖` after the optimizer step |
 | `os.listdir` order for the image list | split depends on the file system order, not reproducible across machines | file names sorted before any split |
 | `import torch` twice, `torchmetrics` only for four metrics, `im_size` unused in `SegDataset` | clutter | metrics computed from one confusion matrix in `metrics.py`, no extra dependency |
-| no tests | nothing caught the problems above | 28 pytest checks, including a "U-Net overfits one batch" test |
+| no tests | nothing caught the problems above | 29 pytest checks, including a "U-Net overfits one batch" test |

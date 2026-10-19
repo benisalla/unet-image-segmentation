@@ -108,11 +108,13 @@ def load_checkpoint(path, device="cpu"):
 
 
 def train(mcfg: ModelConfig, tcfg: TrainConfig, evaluate_test: bool = True, verbose: bool = True,
-          on_epoch=None) -> dict:
+          on_epoch=None, on_model=None) -> dict:
     """Train, keep the best checkpoint by val IoU, evaluate it. Returns a summary dict.
 
     `on_epoch(history)` is called after every epoch (the notebook uses it to redraw the
-    curves in place).
+    curves in place). `on_model(epoch, model)` is called once before training (epoch 0,
+    the untrained model) and after every epoch, e.g. to record predictions as training
+    goes (`scripts/before_after.py`).
     """
     set_threads(tcfg.threads)
     seed_everything(tcfg.seed)
@@ -139,6 +141,8 @@ def train(mcfg: ModelConfig, tcfg: TrainConfig, evaluate_test: bool = True, verb
               f"val {len(val_dl.dataset)} | foreground {100 * fg:.1f}% of pixels | loss {tcfg.loss}")
 
     history, best_iou, t0 = [], -1.0, time.time()
+    if on_model is not None:
+        on_model(0, model)
     for epoch in range(1, tcfg.epochs + 1):
         te = time.time()
         tr_loss, ratio = train_one_epoch(model, train_dl, criterion, optimizer, scheduler, tcfg.max_norm, tcfg.device)
@@ -160,6 +164,8 @@ def train(mcfg: ModelConfig, tcfg: TrainConfig, evaluate_test: bool = True, verb
                   f"upd {ratio:.1e} | {row['time_s']:.0f}s{'  *best' if improved else ''}", flush=True)
         if on_epoch is not None:
             on_epoch(history)
+        if on_model is not None:
+            on_model(epoch, model)
 
     summary = {"model": mcfg.name, "params": n_params, "epochs": tcfg.epochs, "train_time_s": time.time() - t0,
                "best_val_iou": best_iou, "model_config": asdict(mcfg), "train_config": tcfg.to_dict()}

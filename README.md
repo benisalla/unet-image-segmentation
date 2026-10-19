@@ -10,7 +10,7 @@ Kaggle/Colab notebook.**
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-ee4c2c.svg)](https://pytorch.org)
-[![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen.svg)](docs/testing.md)
+[![Tests](https://img.shields.io/badge/tests-29%20passing-brightgreen.svg)](docs/testing.md)
 
 It grew out of a computer-vision coursework notebook (École Centrale) that asked four
 questions about U-Net: does max-pooling beat strided convolution, how much do skip
@@ -18,6 +18,37 @@ connections bring, encoder-decoder vs a fully connected network, and how to pick
 inference threshold. Here each question is one flag, the models are small (1-2 M
 parameters, a few minutes per run on a CPU), and the answers are re-measured with real
 numbers.
+
+## Before and after training
+
+The task, and how training solves it. Each picture is a test image with the predicted
+mask drawn on top: green = correct object pixels, red = false positives, blue = missed
+object pixels. The untrained network paints almost everything red. After a few epochs
+the mask has moved onto the objects, and by the last epoch it follows their outlines.
+
+![U-Net on the synthetic shapes, epoch by epoch](assets/progress_shapes.gif)
+
+![U-Net on Oxford-IIIT Pet, epoch by epoch](assets/progress_pets.gif)
+
+| synthetic shapes | Oxford-IIIT Pet |
+|---|---|
+| ![before / after on shapes](assets/before_after_shapes.png) | ![before / after on pets](assets/before_after_pets.png) |
+
+The same images through the three families. U-Net has skip connections. The SegNet-like
+model has none, so its masks become rounded blobs and lose small shapes. The fully
+connected model has no convolutions at all, and on the shapes it paints noise where
+objects usually are.
+
+| synthetic shapes | Oxford-IIIT Pet |
+|---|---|
+| ![U-Net vs SegNet vs FCN on shapes](assets/unet_segnet_fcn_shapes.png) | ![U-Net vs SegNet vs FCN on pets](assets/unet_segnet_fcn_pets.png) |
+
+The epoch-by-epoch pictures come from a separate re-run that recorded the predictions
+after every epoch. On the shapes this re-run ended at test IoU 0.47, against 0.56 for the
+run in the table below (one CPU thread instead of two). That gap shows how noisy 6-epoch
+runs are. The Pets re-run reproduced 0.641 exactly. To regenerate everything:
+`python scripts/before_after.py train ...` once per dataset, then
+`python scripts/before_after.py plot` (see the script's docstring).
 
 ```mermaid
 flowchart LR
@@ -102,8 +133,9 @@ What the comparison says about the coursework's questions:
 
 - **Max-pool beats strided convolution.** IoU is 0.560 against 0.422, with fewer
   weights. The strided model also drops whole small objects.
-- **Skip connections matter.** IoU is 0.560 against 0.489. Without them the masks become
-  rounded blobs.
+- **Skip connections help.** IoU is 0.560 against 0.489. That gap is inside the
+  run-to-run noise of a 6-epoch run (about 0.09, see below), but the pictures show the
+  difference clearly: without skips the masks become rounded blobs.
 - **The fully connected model fails.** IoU is 0.10 with ten times the parameters. It
   learns where objects tend to be, not their shapes.
 - **Pixel accuracy hides all of this.** Every model, including the fully connected one,
@@ -123,12 +155,22 @@ learn faster. That says nothing about final quality: the plain U-Net was still c
 |---|---|---|---|---|---|---|---|
 | `unet-residual` | 2.03 M | **0.679** | **0.809** | 0.829 | 0.767 | 0.855 | 8.1 min |
 | `unet` | 1.94 M | 0.641 | 0.781 | 0.800 | 0.727 | 0.844 | 6.6 min |
+| `segnet` (no skips) | 1.75 M | 0.630 | 0.773 | 0.800 | 0.744 | 0.803 | 3.8 min |
+| `fcn` (fully connected) | 19.21 M | 0.524 | 0.688 | 0.729 | 0.671 | 0.705 | 1.2 min |
 
-With 600 photos and 6 epochs both models find the animal (recall about 0.85). They also
-paint background of similar colour, so precision is lower. The residual blocks give
-+0.04 IoU at the same size. The full dataset at 160 px is the notebook's job.
+With 600 photos and 6 epochs the U-Nets find the animal (recall about 0.85). They also
+paint background of a similar colour, so precision is lower.
 
-![pets: the same test photos through both models](assets/pets_compare_predictions.png)
+- **Residual blocks** add +0.04 IoU at the same size.
+- **Skip connections** matter less here than on the shapes (0.641 vs 0.630). A pet is one
+  large blob, and at 96 px its outline carries few pixels.
+- **The fully connected model** does much better than on the shapes (0.52), because a
+  centred blob is close to the average Pets mask. The panel above shows it has learned
+  that average rather than the animal.
+
+The full dataset at 160 px is the notebook's job.
+
+![pets: the same test photos through every model](assets/pets_compare_predictions.png)
 
 The **threshold** barely matters once the loss is BCE + Dice. The best validation
 threshold was between 0.45 and 0.55 for every convolutional model, and it changed test
@@ -161,7 +203,8 @@ src/unetseg/
   predict.py    masks and overlays for image files, `unetseg-predict`
   viz.py        curves, prediction grids, TP/FP/FN overlays, threshold and confusion plots
 scripts/compare_all.py   train several variants on the same data -> table + comparison figures
-tests/          28 tests, ~30 s on one CPU core
+scripts/before_after.py  record predictions every epoch -> before/after figures and GIFs
+tests/          29 tests, ~30 s on one CPU core
 examples/       six numbered scripts
 docs/           architecture, data, training, evaluation, testing
 notebooks/      build_notebook.py -> train_colab_kaggle.ipynb
