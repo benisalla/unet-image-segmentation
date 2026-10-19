@@ -82,18 +82,58 @@ python examples/01_make_data_and_look.py && python examples/02_train_unet.py
 
 ## Results
 
-Short CPU runs on a shared, loaded machine, to show that every variant learns and how
-they compare; they are not benchmarks. Shapes: 96 px, 600 training / 100 val / 100 test
-images, 6 epochs, batch 16, BCE + Dice, AdamW 2e-3.
+These are **short CPU runs** on a shared, loaded machine: 6 epochs, 600 training images,
+96 px, one thread. Their purpose is to show that every variant learns and how the variants
+compare on equal footing. They are not benchmarks. Commands, per-epoch numbers and the
+threshold study are in [docs/evaluation.md](docs/evaluation.md).
+
+### Synthetic shapes (object = 12% of the pixels, 100 test images)
 
 | model | params | test IoU | test Dice | pixel acc | precision | recall | train time |
 |---|---|---|---|---|---|---|---|
-| `unet` | 1.94 M | 0.560 | 0.718 | 0.943 | 0.728 | 0.708 | 8.5 min |
+| `unet-single` | 0.96 M | **0.660** | **0.796** | 0.960 | 0.834 | 0.760 | 5.8 min |
+| `unet-residual` | 2.03 M | 0.633 | 0.775 | 0.955 | 0.804 | 0.749 | 10.7 min |
+| `unet` | 1.94 M | 0.560 | 0.718 | 0.943 | 0.728 | 0.708 | 7.6 min |
+| `segnet` (no skips) | 1.75 M | 0.489 | 0.657 | 0.931 | 0.676 | 0.639 | 6.9 min |
+| `unet-strided` | 2.14 M | 0.422 | 0.593 | 0.924 | 0.659 | 0.539 | 10.8 min |
+| `fcn` (fully connected) | 19.21 M | 0.102 | 0.184 | 0.837 | 0.190 | 0.179 | 2.2 min |
 
-The other variants (`unet-strided`, `unet-single`, `unet-residual`, `segnet`, `fcn`) and the
-Oxford-IIIT Pet runs are produced by `scripts/compare_all.py` (see
-[docs/training.md](docs/training.md#reproducing-the-readme-results)); their tables and
-figures go here and in `assets/` once the runs finish.
+What the comparison says about the coursework's questions:
+
+- **Max-pool beats strided convolution.** IoU is 0.560 against 0.422, with fewer
+  weights. The strided model also drops whole small objects.
+- **Skip connections matter.** IoU is 0.560 against 0.489. Without them the masks become
+  rounded blobs.
+- **The fully connected model fails.** IoU is 0.10 with ten times the parameters. It
+  learns where objects tend to be, not their shapes.
+- **Pixel accuracy hides all of this.** Every model, including the fully connected one,
+  scores above 0.83.
+
+The single-conv and residual U-Nets lead the plain U-Net after 6 epochs because they
+learn faster. That says nothing about final quality: the plain U-Net was still climbing
+(0.49, 0.55, 0.60 over its last three epochs).
+
+![shapes: the same test images through every model](assets/shapes_compare_predictions.png)
+
+![shapes: validation IoU and training loss per epoch](assets/shapes_compare_iou.png)
+
+### Oxford-IIIT Pet subset (pet = 43% of the pixels, 120 test photos)
+
+| model | params | test IoU | test Dice | pixel acc | precision | recall | train time |
+|---|---|---|---|---|---|---|---|
+| `unet-residual` | 2.03 M | **0.679** | **0.809** | 0.829 | 0.767 | 0.855 | 8.1 min |
+| `unet` | 1.94 M | 0.641 | 0.781 | 0.800 | 0.727 | 0.844 | 6.6 min |
+
+With 600 photos and 6 epochs both models find the animal (recall about 0.85). They also
+paint background of similar colour, so precision is lower. The residual blocks give
++0.04 IoU at the same size. The full dataset at 160 px is the notebook's job.
+
+![pets: the same test photos through both models](assets/pets_compare_predictions.png)
+
+The **threshold** barely matters once the loss is BCE + Dice. The best validation
+threshold was between 0.45 and 0.55 for every convolutional model, and it changed test
+IoU by less than 0.01 ([curves](assets/shapes_unet_thresholds.png)). The fully connected
+model is the exception: its probabilities are all lukewarm, so its best threshold is 0.20.
 
 ## Train for real: Kaggle / Colab notebook
 

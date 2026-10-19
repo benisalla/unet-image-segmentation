@@ -1,6 +1,7 @@
-"""Step 2: train the default U-Net (skip connections, max-pool, double conv) for 4 epochs.
+"""Step 2: train the default U-Net (skip connections, max-pool, double conv) for 8 epochs.
 
-About 2-4 minutes on one CPU thread. Writes runs/examples/unet/ (best.pt, curves.png,
+About 3-4 minutes on one CPU thread (test IoU ~0.7 on the 64 px example shapes).
+Writes runs/examples/unet/ (best.pt, curves.png,
 history.json, metrics.json, predictions.png ...). Needs example 01.
 
     python examples/02_train_unet.py
@@ -13,10 +14,10 @@ mcfg = ModelConfig.from_preset("unet", base=16, depth=4)
 tcfg = TrainConfig(
     data_dir="data/examples/shapes",
     out_dir="runs/examples/unet",
-    img_size=96,
-    epochs=4,
+    img_size=64,
+    epochs=8,
     batch_size=16,
-    lr=2e-3,
+    lr=3e-3,
     loss="bce+dice",
     threads=1,
 )

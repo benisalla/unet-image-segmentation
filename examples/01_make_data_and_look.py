@@ -1,6 +1,7 @@
 """Step 1: write a small synthetic shapes dataset and look at it, with augmentations.
 
-Writes data/examples/shapes (400 train / 60 val / 60 test, 96x96, ~3 s) and
+Writes data/examples/shapes (800 train / 80 val / 80 test, 64x64, ~2 s; small so the
+examples train in minutes on a CPU) and
 examples/output/01_samples.png: images, their masks, and the same image/mask pair
 after four random augmentations (image and mask always move together).
 
@@ -22,8 +23,8 @@ DATA = Path("data/examples/shapes")
 OUT = Path("examples/output")
 OUT.mkdir(parents=True, exist_ok=True)
 
-write_shapes(DATA, size=96, n_train=400, n_val=60, n_test=60, seed=0)
-ds = SegDataset.from_folder(DATA, "train", 96)
+write_shapes(DATA, size=64, n_train=800, n_val=80, n_test=80, seed=0)
+ds = SegDataset.from_folder(DATA, "train", 64)
 print(f"{len(ds)} training images, object = {100 * ds.foreground_fraction():.1f}% of the pixels")
 
 torch.manual_seed(0)

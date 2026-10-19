@@ -1,9 +1,10 @@
 """Step 6: one experiment from the coursework, small enough for a CPU: skip connections.
 
-Trains `unet` (with skips) and `segnet` (same encoder-decoder, no skips) for 3 epochs
-each on the example data (~4-6 minutes in total), then draws the same test images
-through both. Without skips the decoder must rebuild the edges from the 6x6 bottleneck,
-so the masks come out blurry and rounded. Writes examples/output/06_skip_vs_no_skip.png.
+Trains `unet` (with skips) and `segnet` (same encoder-decoder, no skips) for 6 epochs
+each on the 64 px example data (~5-6 minutes in total), then draws the same test images
+through both. Without skips the decoder must rebuild the edges from the 4x4 bottleneck,
+so the masks tend to come out blurrier and rounder. (Short runs are noisy: compare the
+pictures as well as the two numbers.) Writes examples/output/06_skip_vs_no_skip.png.
 Needs example 01.
 
     python examples/06_skip_vs_no_skip.py
@@ -25,14 +26,15 @@ OUT = Path("examples/output")
 OUT.mkdir(parents=True, exist_ok=True)
 results = {}
 for name in ["unet", "segnet"]:
-    tcfg = TrainConfig(data_dir="data/examples/shapes", out_dir=f"runs/examples/{name}_3ep", img_size=96, epochs=3)
+    tcfg = TrainConfig(data_dir="data/examples/shapes", out_dir=f"runs/examples/{name}_6ep", img_size=64, epochs=6,
+                       lr=3e-3)
     s = train(ModelConfig.from_preset(name), tcfg, verbose=False)
     results[name] = s["test"]["at_threshold"]
     print(f"{name:7s} test IoU {results[name]['iou']:.3f}  Dice {results[name]['dice']:.3f}  "
           f"({s['params'] / 1e6:.2f} M params, {s['train_time_s'] / 60:.1f} min)")
 
-test = SegDataset.from_folder("data/examples/shapes", "test", 96)
-models = {n: load_checkpoint(f"runs/examples/{n}_3ep/best.pt")[0] for n in results}
+test = SegDataset.from_folder("data/examples/shapes", "test", 64)
+models = {n: load_checkpoint(f"runs/examples/{n}_6ep/best.pt")[0] for n in results}
 fig, ax = plt.subplots(4, 4, figsize=(8, 8))
 with torch.no_grad():
     for i in range(4):

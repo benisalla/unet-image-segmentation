@@ -70,8 +70,11 @@ the full Pets dataset).
 
 ```bash
 unetseg-data shapes                                   # 800 / 100 / 100, 96 px
-python scripts/compare_all.py --data data/shapes --epochs 6 --max-train 600 --threads 2 --out runs/shapes
+python scripts/compare_all.py --data data/shapes --epochs 6 --max-train 600 --threads 1 --out runs/shapes
 unetseg-data pets --max-images 1200 --size 128        # ~3 min, 41 MB on disk
-python scripts/compare_all.py --data data/pets --size 128 --models unet unet-residual \
-       --epochs 6 --threads 2 --out runs/pets
+python scripts/compare_all.py --data data/pets --size 96 --models unet unet-residual \
+       --epochs 6 --max-train 600 --threads 1 --out runs/pets
 ```
+
+Each run takes 2-11 minutes on one loaded CPU core; `compare_all.py` writes
+`results.md`, `compare_iou.png` and `compare_predictions.png` in the output folder.

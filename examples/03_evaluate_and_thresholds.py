@@ -20,7 +20,7 @@ from unetseg.viz import plot_confusion, plot_threshold_sweep
 OUT = Path("examples/output")
 OUT.mkdir(parents=True, exist_ok=True)
 model, cfg, ckpt = load_checkpoint("runs/examples/unet/best.pt")
-val = SegDataset.from_folder("data/examples/shapes", "val", 96)
+val = SegDataset.from_folder("data/examples/shapes", "val", ckpt["train_config"]["img_size"])
 probs, targets = collect_probs(model, DataLoader(val, batch_size=32))
 
 print("threshold   IoU    Dice   precision recall")
